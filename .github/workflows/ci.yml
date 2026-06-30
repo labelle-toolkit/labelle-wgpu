@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build + test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Install GLFW deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libx11-dev libxi-dev libxcursor-dev libxinerama-dev libxrandr-dev
+      # `zig build test` builds only the host-target WAV parser + module
+      # compile-checks (no native wgpu/Metal), so it's cheap on both OSes.
+      - name: Build + test
+        run: zig build test
+
+  example-demo:
+    name: wgpu example demo (macOS Metal)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Cache Zig artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/Library/Caches/zig
+            example/.zig-cache
+          key: wgpu-ex-${{ runner.os }}-${{ hashFiles('build.zig.zon', 'example/build.zig.zon') }}
+          restore-keys: |
+            wgpu-ex-${{ runner.os }}-
+      # Real Apple render path: links Metal/QuartzCore/Foundation + compiles the
+      # CAMetalLayer surface in window.zig.
+      - name: Build the demo
+        run: cd example && zig build
