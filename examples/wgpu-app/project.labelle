@@ -1,0 +1,17 @@
+.{
+    // An assembler-GENERATED wgpu project (vs the hand-written example/ demo),
+    // built via the assembler in CI to lock the wgpu manifest/fragments →
+    // buildable+correctly-linked project pipeline (the coverage that lived in
+    // labelle-assembler's examples/wgpu before wgpu was slimmed out of it).
+    // `.backend = .wgpu` resolves to THIS repo (the flip / local-sibling fallback).
+    .name = "wgpu_app",
+    .backend = .wgpu,
+    .y_axis = .up,
+    .ecs = .mock,
+    .core_version = "1.21.0",
+    .engine_version = "1.65.0",
+    .gfx_version = "1.19.0",
+    .labelle_version = "local:../../../labelle-cli",
+    .assembler_version = "local:../../../labelle-assembler",
+    .states = .{"playing"},
+}

@@ -58,3 +58,64 @@ jobs:
       # CAMetalLayer surface in window.zig.
       - name: Build the demo
         run: cd example && zig build
+
+  # Assembler-integration: generate examples/wgpu-app THROUGH the assembler
+  # (manifest splice + fetch of this backend) and build it on Metal. Locks the
+  # wgpu manifest/fragments → buildable+correctly-linked project pipeline — the
+  # coverage that lived in labelle-assembler's examples/wgpu before wgpu was
+  # slimmed out of it. macOS so the frameworks link for real. The app pins
+  # released core/engine/gfx (fetched) + the assembler/cli as siblings (the flip
+  # is unreleased, built from main).
+  assembler-integration:
+    name: wgpu-app via assembler (macOS Metal)
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout labelle-wgpu
+        uses: actions/checkout@v4
+        with:
+          path: labelle-wgpu
+          persist-credentials: false
+      - name: Checkout labelle-assembler (main)
+        uses: actions/checkout@v4
+        with:
+          repository: labelle-toolkit/labelle-assembler
+          ref: main
+          path: labelle-assembler
+          persist-credentials: false
+      - name: Checkout labelle-cli (main)
+        uses: actions/checkout@v4
+        with:
+          repository: labelle-toolkit/labelle-cli
+          ref: main
+          path: labelle-cli
+          persist-credentials: false
+      - name: Checkout labelle-gui for the labelle-cli build
+        uses: actions/checkout@v4
+        with:
+          repository: labelle-toolkit/labelle-gui
+          ref: main
+          path: labelle-cli/zig-pkg/labelle-gui
+          persist-credentials: false
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - name: Build labelle-assembler
+        run: cd labelle-assembler && zig build
+      - name: Build labelle-cli
+        run: cd labelle-cli && zig build
+      - name: Generate + build wgpu-app (Metal)
+        run: |
+          cd labelle-wgpu/examples/wgpu-app
+          $GITHUB_WORKSPACE/labelle-cli/zig-out/bin/labelle generate
+          # Lock the link fragment: the generated build MUST link the Apple
+          # frameworks wgpu-native needs (regression guard from the old
+          # assembler examples/wgpu step).
+          for fw in Foundation QuartzCore Metal; do
+            grep -qF "linkFramework(\"$fw\"" .labelle/wgpu_desktop/build.zig \
+              || { echo "E: generated build.zig missing linkFramework(\"$fw\")"; exit 1; }
+          done
+          echo "PASS: generated wgpu build.zig links Foundation/QuartzCore/Metal"
+          cd .labelle/wgpu_desktop
+          zig build
