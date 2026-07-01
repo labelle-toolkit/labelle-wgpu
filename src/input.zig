@@ -1,5 +1,10 @@
 /// WebGPU input backend — satisfies the engine InputInterface(Impl) contract.
 /// Uses GLFW for input (wgpu doesn't provide input).
+// Contract-version tags (labelle-assembler#453 item 1). The assembler emits
+// directional `@compileError` version asserts in the generated game's main.zig
+// comparing these against labelle-core's `*_CONTRACT_VERSION` consts. v1 is the
+// initial revision of each contract.
+pub const targets_input_contract: u32 = 1;
 const glfw = @import("zglfw");
 
 const MAX_KEYS = 512;

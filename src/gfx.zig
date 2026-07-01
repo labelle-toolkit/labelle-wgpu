@@ -29,6 +29,14 @@
 /// Submodules are private file-system neighbours. The public surface is
 /// consumed via `b.dependency("labelle_wgpu", ...).module("gfx")`, which
 /// still points at this file.
+// Contract-version tags (labelle-assembler#453 item 1). The assembler emits
+// directional `@compileError` version asserts in the generated game's main.zig
+// comparing these against labelle-core's `*_CONTRACT_VERSION` consts. v1 is the
+// initial revision of each contract. wgpu satisfies BOTH the draw contract
+// (shape + textured-sprite vertex batching) and the loader contract (PNG/BMP/TGA
+// CPU decode + ASTC compressed upload + getTexturePixels).
+pub const targets_draw_contract: u32 = 1;
+pub const targets_loader_contract: u32 = 1;
 const std = @import("std");
 
 const types = @import("gfx/types.zig");

@@ -23,4 +23,43 @@
         .backend_dep = .{},
         .link = .{},
     },
+
+    // Canonical provider identity (#453). wgpu is an official provider, so it
+    // lives under the reserved `labelle.` namespace. The enum tag `.wgpu` is a
+    // shorthand for exactly this id — `validateProviderIdentity` drift-checks it.
+    .id = "labelle.wgpu",
+
+    // Declared capabilities (#453) — what wgpu ACTUALLY implements TODAY. wgpu
+    // is a young DESKTOP-ONLY backend (sprite/text/gamepad are still polish TODOs
+    // per assembler#287), so this set is deliberately minimal — declaring only
+    // what the code genuinely does, never aspirational features.
+    //
+    //   - `.compressed_textures` — `gfx/texture.zig` decodes the ASTC container
+    //     (`isCompressed`) and uploads it GPU-native (`uploadCompressed` /
+    //     `getCompressedTexture`, #341). The window submitter requests the ASTC
+    //     device feature.
+    //   - `.fonts` — `gfx/font.zig` ships an embedded 8x8 bitmap font + glyph
+    //     atlas and renders `drawText` through the textured-sprite path.
+    //
+    // NOT declared (the code does not implement these yet):
+    //   - `.screenshots`      — no takeScreenshot / framebuffer readback path.
+    //   - `.gamepad_polling`  — the gamepad button/axis reads are stubs
+    //                           (isGamepadButtonDown/Pressed → false,
+    //                           getGamepadAxisValue → 0); only joystick presence
+    //                           detection works, so polling is NOT genuinely
+    //                           implemented. Under-claiming here is safe; a
+    //                           gamepad-requiring project must reject wgpu.
+    //   - `.raw_gui_adapter`  — no in-backend imgui adapter.
+    //   - `.audio_ogg`        — the audio adapter decodes WAV only (shared
+    //                           `labelle-audio` v0.2.1 has no OGG/Vorbis decoder).
+    //   - `.surface_loss`     — the surface reconfigure in window.zig handles
+    //                           desktop DPI/resize/fullscreen, NOT the mobile GPU
+    //                           surface destroy/recreate lifecycle.
+    //   - `.headless`         — wgpu always creates a GLFW window.
+    //   - `.wasm` / `.android` / `.ios` — wgpu is desktop-only (the CLI rejects
+    //                           wgpu+wasm); it has no mobile/web target.
+    .capabilities = .{
+        .compressed_textures,
+        .fonts,
+    },
 }
