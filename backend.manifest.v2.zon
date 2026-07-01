@@ -32,7 +32,7 @@
     // implemented capability today (GPU-native ASTC decode/upload, #341). A
     // non-empty set opts into resolve-time capability enforcement; v2 must not
     // drop capability negotiation.
-    .capabilities = .{.compressed_textures},
+    .capabilities = .{ .compressed_textures },
 
     // root_alias defaults to `backend_<name>`, so the generated root imports
     // these as `backend_gfx`/`backend_input`/… exactly as the enum path does.
@@ -60,7 +60,7 @@
             .loop_style = .loop,
             .target = .native,
             // The glfw windowing static lib (v1 backend_dep.txt `.artifact("glfw")`).
-            .artifacts = .{.{ .name = "glfw" }},
+            .artifacts = .{ .{ .name = "glfw" } },
             .package = .binary,
         },
         // No android/ios/wasm — wgpu is desktop-only.
