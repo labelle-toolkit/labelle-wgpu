@@ -38,10 +38,14 @@
     //     (`isCompressed`) and uploads it GPU-native (`uploadCompressed` /
     //     `getCompressedTexture`, #341). The window submitter requests the ASTC
     //     device feature.
-    //   - `.fonts` — `gfx/font.zig` ships an embedded 8x8 bitmap font + glyph
-    //     atlas and renders `drawText` through the textured-sprite path.
     //
     // NOT declared (the code does not implement these yet):
+    //   - `.fonts`            — the `.fonts` capability denotes the font-atlas
+    //                           LOADER seam (decodeFont / uploadFontAtlas /
+    //                           FontAtlas), which wgpu does NOT implement. It has
+    //                           only an embedded 8x8 bitmap `drawText` — not a
+    //                           loadable atlas — so a font-RESOURCE project must
+    //                           reject wgpu (codex, PR #2).
     //   - `.screenshots`      — no takeScreenshot / framebuffer readback path.
     //   - `.gamepad_polling`  — the gamepad button/axis reads are stubs
     //                           (isGamepadButtonDown/Pressed → false,
@@ -60,6 +64,5 @@
     //                           wgpu+wasm); it has no mobile/web target.
     .capabilities = .{
         .compressed_textures,
-        .fonts,
     },
 }
