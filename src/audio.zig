@@ -42,11 +42,13 @@
 // Contract-version tags (labelle-assembler#453 item 1). The assembler emits
 // directional `@compileError` version asserts in the generated game's main.zig
 // comparing these against labelle-core's `*_CONTRACT_VERSION` consts. v1 is the
-// initial revision of each contract. wgpu satisfies BOTH the playback contract
-// (software-pumped `Mixer(NullSink)`) and the loader contract (WAV decode via
-// the shared `labelle-audio` package).
+// initial revision of each contract. wgpu satisfies the playback contract
+// (software-pumped `Mixer(NullSink)`), but NOT the audio-loader contract: that
+// seam is `decodeAudio`/`uploadSound` on the backend audio module (the generated
+// AudioBackendAdapter calls them), and wgpu exposes only the legacy path-based
+// `loadSound`/`loadMusic` wrappers — no `decodeAudio`/`uploadSound`. So the
+// loader target is intentionally NOT declared (codex, PR #2).
 pub const targets_audio_playback_contract: u32 = 1;
-pub const targets_audio_loader_contract: u32 = 1;
 const std = @import("std");
 const labelle_audio = @import("labelle-audio");
 
