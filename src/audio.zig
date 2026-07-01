@@ -39,6 +39,14 @@
 /// duplication, and the overflow-safe WAV decode are all provided by the shared
 /// mixer (see `labelle-audio/src/mixer.zig` + `wav.zig`); nothing about that
 /// behaviour changes here.
+// Contract-version tags (labelle-assembler#453 item 1). The assembler emits
+// directional `@compileError` version asserts in the generated game's main.zig
+// comparing these against labelle-core's `*_CONTRACT_VERSION` consts. v1 is the
+// initial revision of each contract. wgpu satisfies BOTH the playback contract
+// (software-pumped `Mixer(NullSink)`) and the loader contract (WAV decode via
+// the shared `labelle-audio` package).
+pub const targets_audio_playback_contract: u32 = 1;
+pub const targets_audio_loader_contract: u32 = 1;
 const std = @import("std");
 const labelle_audio = @import("labelle-audio");
 
