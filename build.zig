@@ -36,6 +36,13 @@ pub fn build(b: *std.Build) void {
     const labelle_audio_dep = b.dependency("labelle_audio", .{ .target = target, .optimize = optimize });
     const labelle_audio_mod = labelle_audio_dep.module("labelle-audio");
 
+    // labelle-core — the window/input/render contracts + behavioral conformance
+    // suites the test-only `src/contract_check.zig` compile-proves this backend
+    // against (labelle-assembler#502). Test-only: the shipped backend modules do
+    // not import it. Pinned to v1.22.0 (has window_contract.zig + conformance.zig).
+    const core_dep = b.dependency("labelle_core", .{ .target = target, .optimize = optimize });
+    const core_mod = core_dep.module("labelle-core");
+
     // ── Gfx backend module ──────────────────────────────────────────
     // `link_libc = true` so the legacy `loadTexture` path-based loader
     // can call libc `fopen` / `fread` / `fclose`. See the rationale
@@ -153,5 +160,29 @@ pub fn build(b: *std.Build) void {
     if (wgpu_mod_opt != null) {
         const window_tests = b.addTest(.{ .root_module = window_mod });
         test_step.dependOn(&window_tests.step);
+
+        // ── labelle-core contract conformance self-check (#502) ─────────
+        // Test-only module that imports labelle-core and compile-proves this
+        // backend satisfies assertWindow/assertInput/assertBackend — the same
+        // gates the assembler emits into every generated main.zig. The shipped
+        // src/window.zig deliberately does NOT import labelle-core, so the module
+        // graph consumed by generated games stays untouched. Compile-only
+        // (mirrors window_tests): the behavioral suite needs a live GLFW/GPU
+        // surface, but instantiating Window(Impl) re-runs assertWindow at
+        // comptime, so the contract proof holds without executing. Gated on the
+        // lazy wgpu dep like window_tests (window.zig imports wgpu).
+        const contract_check_mod = b.createModule(.{
+            .root_source_file = b.path("src/contract_check.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "labelle_core", .module = core_mod },
+                .{ .name = "window", .module = window_mod },
+                .{ .name = "input", .module = input_mod },
+                .{ .name = "gfx", .module = gfx_mod },
+            },
+        });
+        const contract_check = b.addTest(.{ .root_module = contract_check_mod });
+        test_step.dependOn(&contract_check.step);
     }
 }

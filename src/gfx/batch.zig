@@ -225,7 +225,7 @@ pub fn resetSpriteBatch() void {
     sprite_quad_count = 0;
 }
 
-/// Consume shape batch data for GPU submission (called once per frame at endDrawing).
+/// Consume shape batch data for GPU submission (called once per frame at endFrame).
 /// Resets the batch after returning — the returned slices are valid until the next draw call.
 pub fn consumeShapeBatch() struct { vertices: []const ColorVertex, indices: []const u32 } {
     const vcount = shape_vertex_count;
@@ -237,7 +237,7 @@ pub fn consumeShapeBatch() struct { vertices: []const ColorVertex, indices: []co
     };
 }
 
-/// Consume sprite batch data for GPU submission (called once per frame at endDrawing).
+/// Consume sprite batch data for GPU submission (called once per frame at endFrame).
 /// Resets the batch after returning — the returned slices are valid until the next draw call.
 /// `texture_ids` has one entry per quad (every 4 vertices / 6 indices).
 pub fn consumeSpriteBatch() struct { vertices: []const SpriteVertex, indices: []const u32, texture_ids: []const u32 } {

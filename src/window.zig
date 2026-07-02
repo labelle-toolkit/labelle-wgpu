@@ -38,7 +38,7 @@ var screen_h: i32 = 600;
 var glfw_window: ?*glfw.Window = null;
 var target_fps_val: i32 = 60;
 var window_hidden: bool = false;
-/// Latched by `requestQuit()` and OR'd into `windowShouldClose`/`shouldQuit`
+/// Latched by `requestQuit()` and OR'd into `shouldQuit`
 /// (GLFW also has its own close flag; this covers a programmatic engine quit).
 var quit_requested: bool = false;
 /// Previous `glfw.getTime()` reading, for `frameDuration()`.
@@ -69,7 +69,7 @@ fn framebufferSize() [2]i32 {
 
 /// Reconcile the wgpu surface with the current physical framebuffer size.
 ///
-/// Called once per frame from `beginDrawing`. The expensive part — the wgpu
+/// Called once per frame from `beginFrame`. The expensive part — the wgpu
 /// surface reconfigure — only runs when the framebuffer actually changed (a
 /// DPI move, resize, or fullscreen toggle), `> 0`-guarded to skip minimized
 /// windows. But `gfx.setScreenSize` is re-asserted EVERY frame: it's cheap,
@@ -740,24 +740,18 @@ pub fn closeWindow() void {
     glfw.terminate();
     glfw_window = null;
     // The GPU resources above are released — mark not-ready so a stray
-    // `endDrawing`/`ensureSurface` after close (or before a re-init's `initGpu`)
+    // `endFrame`/`ensureSurface` after close (or before a re-init's `initGpu`)
     // hits the `if (!gpu_ready) return` guard instead of touching freed handles.
     gpu_ready = false;
 }
 
-pub fn windowShouldClose() bool {
-    if (quit_requested) return true;
-    if (glfw_window) |win| return win.shouldClose();
-    return true;
-}
-
 // ── Canonical window contract (labelle-core `assertWindow`) ──────────────
-// Additive aliases so the wgpu backend satisfies the canonical window contract
-// (width/height/frameDuration/requestQuit) ahead of its out-of-tree extraction
-// (#386), mirroring the in-tree raylib/null conformance (#411). The desktop
-// template still calls the legacy names + a fixed 0.016 dt, so generated output
-// is byte-identical; these exist for the contract guard + manifest-driven
-// templates.
+// The uniform window surface the pluggable-backends contract standardizes on
+// (#386) — the wgpu backend's only window surface. wgpu is a *loop-style*
+// backend (it owns `while (!shouldQuit())`), so it declares `shouldQuit` — whose
+// presence signals loop-ownership to the splice. The desktop template calls
+// these canonical names with a fixed 0.016 dt (frame-rate-independent sim is a
+// separate ticket).
 
 /// Current framebuffer width (physical pixels, HiDPI-aware — `screen_w` is
 /// reconciled from `getFramebufferSize()` each frame by `ensureSurface`).
@@ -782,15 +776,19 @@ pub fn frameDuration() f64 {
     return dt;
 }
 /// Ask the window to end the run loop. GLFW has its own close flag too, but a
-/// programmatic engine/script quit latches here; `windowShouldClose`/`shouldQuit`
-/// OR it in (no behavior change unless something calls this).
+/// programmatic engine/script quit latches here; `shouldQuit` ORs it in (no
+/// behavior change unless something calls this).
 pub fn requestQuit() void {
     quit_requested = true;
 }
-/// Canonical alias of `windowShouldClose` (loop-style backends own the
-/// `while (!shouldQuit())` loop). Presence signals loop-ownership to the contract.
+/// Whether the run loop should end — the latched programmatic quit OR GLFW's own
+/// close flag. Its presence marks wgpu as a loop-model backend (loop-style
+/// backends own the `while (!shouldQuit())` loop; signals loop-ownership to the
+/// contract).
 pub fn shouldQuit() bool {
-    return windowShouldClose();
+    if (quit_requested) return true;
+    if (glfw_window) |win| return win.shouldClose();
+    return true;
 }
 
 /// Query whether the window is currently fullscreen. Mirrors the bgfx
@@ -806,7 +804,7 @@ pub fn isFullscreen() bool {
 /// fullscreen binds the window to the primary monitor at its current video
 /// mode (saving the windowed geometry first); going windowed restores the
 /// saved geometry. The resulting PHYSICAL framebuffer change is picked up by
-/// `ensureSurface()` on the next `beginDrawing` (which reconfigures the wgpu
+/// `ensureSurface()` on the next `beginFrame` (which reconfigures the wgpu
 /// surface + tells gfx the new physical size), so no resize is done here —
 /// this keeps the surface and gfx exactly in step with the live framebuffer
 /// rather than guessing the framebuffer from the monitor's logical video
@@ -836,7 +834,7 @@ pub fn setTargetFPS(fps: i32) void {
     target_fps_val = fps;
 }
 
-pub fn beginDrawing() void {
+pub fn beginFrame() void {
     const input = @import("input");
     input.newFrame();
     // Reconcile the wgpu surface with the current physical framebuffer size
@@ -848,7 +846,7 @@ pub fn beginDrawing() void {
 /// Drain the gfx frame into the GPU: acquire the surface texture, clear,
 /// then replay the ordered draw-segment stream so shapes and sprites
 /// composite in strict painter's (submission) order, submit, present.
-pub fn endDrawing() void {
+pub fn endFrame() void {
     if (!gpu_ready) return;
 
     const frame = gfx.consumeFrame();
