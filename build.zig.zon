@@ -6,11 +6,17 @@
     .dependencies = .{
         // labelle-core supplies the window/input/render contracts + behavioral
         // conformance suites the test-only `src/contract_check.zig` compile-proves
-        // this backend against (labelle-assembler#502). Test-only: the shipped
-        // backend modules do not import it. Pinned to v1.22.0.
+        // this backend against (labelle-assembler#502). Pinned to v1.22.0.
+        //
+        // Lazy + test-only: the shipped backend modules never import it, and the
+        // contract_check is itself gated on the lazy `wgpu_native_zig` dep, so a
+        // normal `zig build` (or a generated game / example that only needs the
+        // backend modules) never resolves it. Keeps labelle-core off the normal
+        // build graph for offline/vendored consumers.
         .labelle_core = .{
             .url = "https://github.com/labelle-toolkit/labelle-core/archive/refs/tags/v1.22.0.tar.gz",
             .hash = "labelle_core-1.22.0-OauRcMkFBgCFj-reWQnyVqtZBYsfbSFQkHY971oQduWl",
+            .lazy = true,
         },
         .wgpu_native_zig = .{
             .url = "git+https://github.com/snorm-dev/wgpu_native_zig#8aef4a9873637ba9444282f7a706eaa251f8d8e9",

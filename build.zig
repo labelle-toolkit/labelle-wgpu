@@ -36,13 +36,6 @@ pub fn build(b: *std.Build) void {
     const labelle_audio_dep = b.dependency("labelle_audio", .{ .target = target, .optimize = optimize });
     const labelle_audio_mod = labelle_audio_dep.module("labelle-audio");
 
-    // labelle-core — the window/input/render contracts + behavioral conformance
-    // suites the test-only `src/contract_check.zig` compile-proves this backend
-    // against (labelle-assembler#502). Test-only: the shipped backend modules do
-    // not import it. Pinned to v1.22.0 (has window_contract.zig + conformance.zig).
-    const core_dep = b.dependency("labelle_core", .{ .target = target, .optimize = optimize });
-    const core_mod = core_dep.module("labelle-core");
-
     // ── Gfx backend module ──────────────────────────────────────────
     // `link_libc = true` so the legacy `loadTexture` path-based loader
     // can call libc `fopen` / `fread` / `fclose`. See the rationale
@@ -169,20 +162,29 @@ pub fn build(b: *std.Build) void {
         // graph consumed by generated games stays untouched. Compile-only
         // (mirrors window_tests): the behavioral suite needs a live GLFW/GPU
         // surface, but instantiating Window(Impl) re-runs assertWindow at
-        // comptime, so the contract proof holds without executing. Gated on the
-        // lazy wgpu dep like window_tests (window.zig imports wgpu).
-        const contract_check_mod = b.createModule(.{
-            .root_source_file = b.path("src/contract_check.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = &.{
-                .{ .name = "labelle_core", .module = core_mod },
-                .{ .name = "window", .module = window_mod },
-                .{ .name = "input", .module = input_mod },
-                .{ .name = "gfx", .module = gfx_mod },
-            },
-        });
-        const contract_check = b.addTest(.{ .root_module = contract_check_mod });
-        test_step.dependOn(&contract_check.step);
+        // comptime, so the contract proof holds without executing.
+        //
+        // labelle-core is resolved LAZILY here (and gated on the lazy wgpu dep,
+        // since window.zig imports wgpu) so a normal `zig build` never fetches it.
+        // window.zig's GLFW calls are compiled into this test binary even though
+        // it never runs, so link the glfw artifact explicitly to guarantee the
+        // symbols resolve regardless of transitive linkage (codex/#502 review).
+        if (b.lazyDependency("labelle_core", .{ .target = target, .optimize = optimize })) |core_dep| {
+            const core_mod = core_dep.module("labelle-core");
+            const contract_check_mod = b.createModule(.{
+                .root_source_file = b.path("src/contract_check.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "labelle_core", .module = core_mod },
+                    .{ .name = "window", .module = window_mod },
+                    .{ .name = "input", .module = input_mod },
+                    .{ .name = "gfx", .module = gfx_mod },
+                },
+            });
+            const contract_check = b.addTest(.{ .root_module = contract_check_mod });
+            contract_check.root_module.linkLibrary(glfw_artifact);
+            test_step.dependOn(&contract_check.step);
+        }
     }
 }

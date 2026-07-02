@@ -20,6 +20,7 @@ const builtin = @import("builtin");
 const glfw = @import("zglfw");
 const wgpu = @import("wgpu");
 const gfx = @import("gfx");
+const input = @import("input");
 
 pub const ConfigFlags = struct {
     window_hidden: bool = false,
@@ -699,7 +700,6 @@ pub fn initWindow(width_px: i32, height_px: i32, title: [:0]const u8) void {
 
     initGpu();
 
-    const input = @import("input");
     if (glfw_window) |win| {
         input.setWindow(win);
     }
@@ -835,7 +835,6 @@ pub fn setTargetFPS(fps: i32) void {
 }
 
 pub fn beginFrame() void {
-    const input = @import("input");
     input.newFrame();
     // Reconcile the wgpu surface with the current physical framebuffer size
     // (DPI move, resize, fullscreen toggle) every frame, so HiDPI changes are
