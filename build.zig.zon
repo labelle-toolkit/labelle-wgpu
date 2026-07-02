@@ -1,9 +1,23 @@
 .{
     .fingerprint = 0x993952ebf33b101a,
     .name = .labelle_wgpu,
-    .version = "0.2.0",
+    .version = "0.3.0",
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
+        // labelle-core supplies the window/input/render contracts + behavioral
+        // conformance suites the test-only `src/contract_check.zig` compile-proves
+        // this backend against (labelle-assembler#502). Pinned to v1.22.0.
+        //
+        // Lazy + test-only: the shipped backend modules never import it, and the
+        // contract_check is itself gated on the lazy `wgpu_native_zig` dep, so a
+        // normal `zig build` (or a generated game / example that only needs the
+        // backend modules) never resolves it. Keeps labelle-core off the normal
+        // build graph for offline/vendored consumers.
+        .labelle_core = .{
+            .url = "https://github.com/labelle-toolkit/labelle-core/archive/refs/tags/v1.22.0.tar.gz",
+            .hash = "labelle_core-1.22.0-OauRcMkFBgCFj-reWQnyVqtZBYsfbSFQkHY971oQduWl",
+            .lazy = true,
+        },
         .wgpu_native_zig = .{
             .url = "git+https://github.com/snorm-dev/wgpu_native_zig#8aef4a9873637ba9444282f7a706eaa251f8d8e9",
             .hash = "wgpu_native_zig-6.5.0-B9jeDCtzAwADQTiKl7pWvLrNC7pelV0GlH_ePoIse28g",

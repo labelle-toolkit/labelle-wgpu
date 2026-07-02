@@ -588,7 +588,7 @@ pub fn main() void {
     }
 
     // --- Main loop ---
-    while (!window.windowShouldClose()) {
+    while (!window.shouldQuit()) {
         // Check for quit
         if (input.isKeyDown(KEY_ESCAPE)) break;
 
@@ -596,7 +596,7 @@ pub fn main() void {
         update();
 
         // --- Render ---
-        window.beginDrawing();
+        window.beginFrame();
         window.clearBackground(30, 30, 46, 255);
 
         // World-space rendering (affected by camera)
@@ -608,7 +608,7 @@ pub fn main() void {
         // Screen-space HUD (no camera transform)
         renderHud();
 
-        window.endDrawing();
+        window.endFrame();
     }
 
     // --- Cleanup ---

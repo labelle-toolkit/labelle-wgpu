@@ -153,5 +153,38 @@ pub fn build(b: *std.Build) void {
     if (wgpu_mod_opt != null) {
         const window_tests = b.addTest(.{ .root_module = window_mod });
         test_step.dependOn(&window_tests.step);
+
+        // ── labelle-core contract conformance self-check (#502) ─────────
+        // Test-only module that imports labelle-core and compile-proves this
+        // backend satisfies assertWindow/assertInput/assertBackend — the same
+        // gates the assembler emits into every generated main.zig. The shipped
+        // src/window.zig deliberately does NOT import labelle-core, so the module
+        // graph consumed by generated games stays untouched. Compile-only
+        // (mirrors window_tests): the behavioral suite needs a live GLFW/GPU
+        // surface, but instantiating Window(Impl) re-runs assertWindow at
+        // comptime, so the contract proof holds without executing.
+        //
+        // labelle-core is resolved LAZILY here (and gated on the lazy wgpu dep,
+        // since window.zig imports wgpu) so a normal `zig build` never fetches it.
+        // window.zig's GLFW calls are compiled into this test binary even though
+        // it never runs, so link the glfw artifact explicitly to guarantee the
+        // symbols resolve regardless of transitive linkage (codex/#502 review).
+        if (b.lazyDependency("labelle_core", .{ .target = target, .optimize = optimize })) |core_dep| {
+            const core_mod = core_dep.module("labelle-core");
+            const contract_check_mod = b.createModule(.{
+                .root_source_file = b.path("src/contract_check.zig"),
+                .target = target,
+                .optimize = optimize,
+                .imports = &.{
+                    .{ .name = "labelle_core", .module = core_mod },
+                    .{ .name = "window", .module = window_mod },
+                    .{ .name = "input", .module = input_mod },
+                    .{ .name = "gfx", .module = gfx_mod },
+                },
+            });
+            const contract_check = b.addTest(.{ .root_module = contract_check_mod });
+            contract_check.root_module.linkLibrary(glfw_artifact);
+            test_step.dependOn(&contract_check.step);
+        }
     }
 }
