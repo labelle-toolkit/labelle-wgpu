@@ -28,8 +28,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libx11-dev libxi-dev libxcursor-dev libxinerama-dev libxrandr-dev
-      # `zig build test` builds only the host-target WAV parser + module
-      # compile-checks (no native wgpu/Metal), so it's cheap on both OSes.
+      # Runs CPU helpers and the headless window contract, plus module
+      # compile-checks. No native wgpu/Metal renderer is initialized.
       - name: Build + test
         run: zig build test
 
