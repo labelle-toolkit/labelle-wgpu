@@ -159,16 +159,14 @@ pub fn build(b: *std.Build) void {
         // backend satisfies assertWindow/assertInput/assertBackend — the same
         // gates the assembler emits into every generated main.zig. The shipped
         // src/window.zig deliberately does NOT import labelle-core, so the module
-        // graph consumed by generated games stays untouched. Compile-only
-        // (mirrors window_tests): the behavioral suite needs a live GLFW/GPU
-        // surface, but instantiating Window(Impl) re-runs assertWindow at
-        // comptime, so the contract proof holds without executing.
+        // graph consumed by generated games stays untouched. The behavioral
+        // suite queries cached dimensions and no-op-safe controls; it does not
+        // initialize a window or GPU. Run it for native targets, as CI does,
+        // and retain the compile proof when the requested target is foreign.
         //
         // labelle-core is resolved LAZILY here (and gated on the lazy wgpu dep,
         // since window.zig imports wgpu) so a normal `zig build` never fetches it.
-        // window.zig's GLFW calls are compiled into this test binary even though
-        // it never runs, so link the glfw artifact explicitly to guarantee the
-        // symbols resolve regardless of transitive linkage (codex/#502 review).
+        // Link the GLFW artifact explicitly for the contract suite's calls.
         if (b.lazyDependency("labelle_core", .{ .target = target, .optimize = optimize })) |core_dep| {
             const core_mod = core_dep.module("labelle-core");
             const contract_check_mod = b.createModule(.{
@@ -184,7 +182,14 @@ pub fn build(b: *std.Build) void {
             });
             const contract_check = b.addTest(.{ .root_module = contract_check_mod });
             contract_check.root_module.linkLibrary(glfw_artifact);
-            test_step.dependOn(&contract_check.step);
+            const native_contract = target.result.os.tag == host_target.result.os.tag and
+                target.result.cpu.arch == host_target.result.cpu.arch and
+                target.result.abi == host_target.result.abi;
+            if (native_contract) {
+                test_step.dependOn(&b.addRunArtifact(contract_check).step);
+            } else {
+                test_step.dependOn(&contract_check.step);
+            }
         }
     }
 }
